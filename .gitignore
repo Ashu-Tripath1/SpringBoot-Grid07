@@ -9,6 +9,7 @@ maven.zip
 # ─── Redis (downloaded binaries — not source code) ────────────────────────────
 redis/
 redis.zip
+dump.rdb
 
 # ─── H2 database files ────────────────────────────────────────────────────────
 data/
