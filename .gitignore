@@ -1,0 +1,40 @@
+# ─── Build output ─────────────────────────────────────────────────────────────
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ─── Maven ────────────────────────────────────────────────────────────────────
+.mvn/wrapper/maven-wrapper.properties
+maven/
+maven.zip
+
+# ─── Redis (downloaded binaries — not source code) ────────────────────────────
+redis/
+redis.zip
+
+# ─── H2 database files ────────────────────────────────────────────────────────
+data/
+
+# ─── IDE files ────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ─── OS files ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Spring Boot ──────────────────────────────────────────────────────────────
+spring-shell.log

@@ -1,0 +1,73 @@
+spring:
+  application:
+    name: grid07-virality-engine
+
+  # ─── JSON Pretty-Print ────────────────────────────────────────────────────
+  jackson:
+    serialization:
+      indent-output: true
+
+  # ─── PostgreSQL (matches docker-compose.yml) ───────────────────────────────────
+  datasource:
+    url: jdbc:postgresql://localhost:5432/grid07
+    username: grid07_user
+    password: grid07_pass
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  # ─── H2 Console (disabled in production, enabled for local dev only) ─────────
+  h2:
+    console:
+      enabled: false
+
+  jpa:
+    hibernate:
+      ddl-auto: update           # use 'validate' in production with Flyway
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # ─── Redis ─────────────────────────────────────────────────────────────────
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 4
+
+# ─── Scheduled Tasks ─────────────────────────────────────────────────────────
+scheduling:
+  notification-sweeper:
+    cron: "0 */5 * * * *"   # every 5 minutes
+
+# ─── Actuator ────────────────────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# ─── Server ──────────────────────────────────────────────────────────────────
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# ─── Logging ─────────────────────────────────────────────────────────────────
+logging:
+  level:
+    com.grid07: DEBUG
+    org.springframework.data.redis: INFO

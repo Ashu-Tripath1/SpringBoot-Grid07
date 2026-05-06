@@ -1,0 +1,24 @@
+# ─── Local Development Profile ───────────────────────────────────────────────
+# Use this profile when running without Docker (no PostgreSQL required).
+#
+# Run with:  ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+# ─────────────────────────────────────────────────────────────────────────────
+
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/grid07;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE
+    username: sa
+    password: password
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: false

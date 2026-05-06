@@ -1,0 +1,226 @@
+{
+  "info": {
+    "_postman_id": "grid07-virality-engine-v1",
+    "name": "Grid07 Virality Engine",
+    "description": "Complete Postman collection for the Grid07 Spring Boot microservice assignment.\n\nSetup:\n1. Run `docker compose up -d` to start Postgres and Redis.\n2. Run `./mvnw spring-boot:run` to start the application.\n3. Run requests in order — Step 0 seeds the data, then test each phase.\n\nBase URL: http://localhost:8080",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",  "value": "http://localhost:8080" },
+    { "key": "userId",   "value": "1" },
+    { "key": "botId",    "value": "1" },
+    { "key": "postId",   "value": "1" }
+  ],
+  "item": [
+
+    {
+      "name": "0 — Seed Data",
+      "item": [
+        {
+          "name": "Create Human User",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set('userId', json.id);",
+            "pm.test('User has id', () => pm.expect(json.id).to.be.a('number'));"
+          ], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/users", "host": ["{{baseUrl}}"], "path": ["api","users"] },
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"alice\",\n  \"isPremium\": true\n}" }
+          }
+        },
+        {
+          "name": "Create Bot",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set('botId', json.id);"
+          ], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/bots", "host": ["{{baseUrl}}"], "path": ["api","bots"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Bot Alpha\",\n  \"personaDescription\": \"A helpful AI assistant that engages with community posts.\"\n}" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "1 — Phase 1: Core API",
+      "item": [
+        {
+          "name": "Create Post (by Human)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set('postId', json.id);",
+            "pm.test('Post has content', () => pm.expect(json.content).to.eql('Hello world! This is my first post.'));",
+            "pm.test('Virality score starts at 0', () => pm.expect(json.viralityScore).to.eql(0));"
+          ], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/posts", "host": ["{{baseUrl}}"], "path": ["api","posts"] },
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": {{userId}},\n  \"content\": \"Hello world! This is my first post.\"\n}" }
+          }
+        },
+        {
+          "name": "Get Post",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+            "pm.test('Post has id', () => pm.expect(pm.response.json().id).to.be.a('number'));"
+          ], "type": "text/javascript" }}],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/posts/{{postId}}", "host": ["{{baseUrl}}"], "path": ["api","posts","{{postId}}"] }
+          }
+        },
+        {
+          "name": "Add Human Comment",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+            "pm.test('Depth is 1', () => pm.expect(pm.response.json().depthLevel).to.eql(1));"
+          ], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/posts/{{postId}}/comments", "host": ["{{baseUrl}}"], "path": ["api","posts","{{postId}}","comments"] },
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": {{userId}},\n  \"content\": \"Great post!\",\n  \"depthLevel\": 1\n}" }
+          }
+        },
+        {
+          "name": "Like Post (Human)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+            "pm.test('Virality score is at least 20 after like', () => pm.expect(pm.response.json().viralityScore).to.be.at.least(20));"
+          ], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/posts/{{postId}}/like", "host": ["{{baseUrl}}"], "path": ["api","posts","{{postId}}","like"] },
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": {{userId}}\n}" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "2 — Phase 2: Redis Guardrails",
+      "item": [
+        {
+          "name": "Bot Comment (First — Should Pass)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+            "pm.test('Bot authored the comment', () => pm.expect(pm.response.json().authorBotName).to.be.a('string'));"
+          ], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/posts/{{postId}}/comments", "host": ["{{baseUrl}}"], "path": ["api","posts","{{postId}}","comments"] },
+            "body": { "mode": "raw", "raw": "{\n  \"botId\": {{botId}},\n  \"targetUserId\": {{userId}},\n  \"content\": \"Interesting perspective! I have some thoughts on this.\",\n  \"depthLevel\": 1\n}" }
+          }
+        },
+        {
+          "name": "Bot Comment (Second within 10 min — Should 429)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 429 — cooldown active', () => pm.response.to.have.status(429));",
+            "pm.test('Error is COOLDOWN_CAP_ACTIVE', () => pm.expect(pm.response.json().error).to.eql('COOLDOWN_CAP_ACTIVE'));"
+          ], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/posts/{{postId}}/comments", "host": ["{{baseUrl}}"], "path": ["api","posts","{{postId}}","comments"] },
+            "body": { "mode": "raw", "raw": "{\n  \"botId\": {{botId}},\n  \"targetUserId\": {{userId}},\n  \"content\": \"Another reply within the cooldown window — must be blocked.\",\n  \"depthLevel\": 1\n}" }
+          }
+        },
+        {
+          "name": "Vertical Cap — Depth 21 (Should 429)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 429 — vertical cap', () => pm.response.to.have.status(429));",
+            "pm.test('Error is VERTICAL_CAP_EXCEEDED', () => pm.expect(pm.response.json().error).to.eql('VERTICAL_CAP_EXCEEDED'));"
+          ], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/posts/{{postId}}/comments", "host": ["{{baseUrl}}"], "path": ["api","posts","{{postId}}","comments"] },
+            "body": { "mode": "raw", "raw": "{\n  \"botId\": {{botId}},\n  \"targetUserId\": {{userId}},\n  \"content\": \"This comment is too deep in the thread.\",\n  \"depthLevel\": 21\n}" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "3 — Phase 3: Notification Engine",
+      "item": [
+        {
+          "name": "Trigger Immediate Notification (first bot interact)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/posts", "host": ["{{baseUrl}}"], "path": ["api","posts"] },
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": {{userId}},\n  \"content\": \"A fresh post to test notification batching.\"\n}" },
+            "description": "Create a fresh post, then use a different bot to comment on it to trigger the immediate notification path. Check the application console for the [PUSH NOTIFICATION] log line."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "4 — Validation & Error Handling",
+      "item": [
+        {
+          "name": "Missing Author (Should 400)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+            "pm.test('Error is INVALID_REQUEST', () => pm.expect(pm.response.json().error).to.eql('INVALID_REQUEST'));"
+          ], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/posts", "host": ["{{baseUrl}}"], "path": ["api","posts"] },
+            "body": { "mode": "raw", "raw": "{\n  \"content\": \"No author specified.\"\n}" }
+          }
+        },
+        {
+          "name": "Both Authors Provided (Should 400)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+          ], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/posts", "host": ["{{baseUrl}}"], "path": ["api","posts"] },
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": {{userId}},\n  \"botId\": {{botId}},\n  \"content\": \"Both authors — ambiguous request.\"\n}" }
+          }
+        },
+        {
+          "name": "Empty Content (Should 400 Bean Validation)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+            "pm.test('Error is VALIDATION_ERROR', () => pm.expect(pm.response.json().error).to.eql('VALIDATION_ERROR'));"
+          ], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/posts", "host": ["{{baseUrl}}"], "path": ["api","posts"] },
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": {{userId}},\n  \"content\": \"\"\n}" }
+          }
+        },
+        {
+          "name": "Post Not Found (Should 404)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+            "pm.test('Error is NOT_FOUND', () => pm.expect(pm.response.json().error).to.eql('NOT_FOUND'));"
+          ], "type": "text/javascript" }}],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/posts/99999", "host": ["{{baseUrl}}"], "path": ["api","posts","99999"] }
+          }
+        }
+      ]
+    }
+  ]
+}
