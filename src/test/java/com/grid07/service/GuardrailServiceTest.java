@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 /**
  * Unit tests for {@link GuardrailServiceImpl}.
@@ -43,7 +44,8 @@ class GuardrailServiceTest {
 
     @BeforeEach
     void setup() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        // lenient: some tests (vertical cap) don't call opsForValue() at all
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
     }
 
     // ─── Vertical Cap ────────────────────────────────────────────────────────

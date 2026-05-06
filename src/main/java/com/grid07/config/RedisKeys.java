@@ -18,6 +18,15 @@ public final class RedisKeys {
         return String.format("post:%d:virality_score", postId);
     }
 
+    /**
+     * Sentinel that a specific user has already liked a specific post.
+     * Key presence = like registered; no TTL (likes are permanent).
+     * Enforced atomically via SET NX to prevent duplicate likes under concurrency.
+     */
+    public static String postLikedByUser(Long postId, Long userId) {
+        return String.format("post:%d:liked_by:user_%d", postId, userId);
+    }
+
     // ─── Guardrail counters ─────────────────────────────────────────────────
 
     /**

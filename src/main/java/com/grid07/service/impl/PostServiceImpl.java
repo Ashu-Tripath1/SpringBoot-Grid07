@@ -1,5 +1,6 @@
 package com.grid07.service.impl;
 
+import com.grid07.config.RedisKeys;
 import com.grid07.dto.*;
 import com.grid07.entity.*;
 import com.grid07.exception.InvalidRequestException;
@@ -8,6 +9,7 @@ import com.grid07.repository.*;
 import com.grid07.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,12 +26,11 @@ import org.springframework.transaction.annotation.Transactional;
  * may be slightly ahead of the DB state — an acceptable trade-off given
  * that Redis is the gatekeeper (not the source of truth).</p>
  *
- * <p>In a real production system the horizontal-cap rollback in the Lua
- * script handles the symmetrical case: if the DB commit fails after the
- * Redis slot was reserved, a compensating DECR should be called. That
- * compensation is left as a TODO for the production hardening phase and
- * would typically be implemented with Spring's transaction synchronisation
- * API or an outbox pattern.</p>
+ * <p>In a production system, the horizontal-cap slot reservation in the Lua
+ * script should be compensated with a DECR if the subsequent DB commit fails.
+ * This is typically handled with Spring's {@code TransactionSynchronizationManager}
+ * or an outbox/saga pattern. The current implementation accepts this minor
+ * inconsistency as it matches the assignment scope.</p>
  */
 @Slf4j
 @Service
@@ -41,9 +42,10 @@ public class PostServiceImpl implements PostService {
     private final UserRepository    userRepository;
     private final BotRepository     botRepository;
 
-    private final ViralityService    viralityService;
-    private final GuardrailService   guardrailService;
+    private final ViralityService     viralityService;
+    private final GuardrailService    guardrailService;
     private final NotificationService notificationService;
+    private final StringRedisTemplate redisTemplate;
 
     // ─── Create Post ─────────────────────────────────────────────────────────
 
@@ -123,11 +125,20 @@ public class PostServiceImpl implements PostService {
     // ─── Like Post ───────────────────────────────────────────────────────────
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public PostResponse likePost(Long postId, LikePostRequest request) {
         // Verify the user and post both exist before touching Redis
         findUserOrThrow(request.getUserId());
         Post post = findPostOrThrow(postId);
+
+        // Prevent duplicate likes: a user may only like a given post once.
+        // Uses Redis SET NX (atomic) so concurrent double-clicks are safe.
+        String likeKey = RedisKeys.postLikedByUser(postId, request.getUserId());
+        Boolean firstLike = redisTemplate.opsForValue().setIfAbsent(likeKey, "1");
+        if (Boolean.FALSE.equals(firstLike)) {
+            throw new InvalidRequestException(
+                    String.format("User %d has already liked post %d.", request.getUserId(), postId));
+        }
 
         viralityService.recordInteraction(postId, ViralityService.InteractionType.HUMAN_LIKE);
         long newScore = viralityService.getScore(postId);
